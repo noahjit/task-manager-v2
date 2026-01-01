@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include "SystemMonitor.h"
+#include <iostream>
 
 static bool isDragging = false;
 static double dragOffsetX, dragOffsetY;
@@ -11,8 +12,6 @@ static double dragOffsetX, dragOffsetY;
 int main() {
     if (!glfwInit())
         return -1;
-
-    nvmlInit();
 
     const char* glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -44,8 +43,13 @@ int main() {
     monitor.InitPDH();
     monitor.InitNVML();
 
-    float last_cpu = 0.0f;
-    auto last_update = std::chrono::steady_clock::now();
+    std::string gpuName = monitor.GetGPUModelName();
+
+    float lastCpu = 0.0f;
+    auto lastCpuUpdate = std::chrono::steady_clock::now();
+
+    float lastGpu = 0.0f;
+    auto lastGpuUpdate = std::chrono::steady_clock::now();
 
     //main loop
     while (!glfwWindowShouldClose(window)) {
@@ -75,11 +79,16 @@ int main() {
         }
 
         auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count();
+        auto elapsedCpu = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCpuUpdate).count();
+        auto elapsedGpu = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastGpuUpdate).count();
 
-        if (elapsed >= 500) {
-            last_cpu = monitor.GetCPUUsagePercentage();
-            last_update = now;
+        if (elapsedCpu >= 500) {
+            lastCpu = monitor.GetCPUUsagePercentage();
+            lastCpuUpdate = now;
+        }
+        if (elapsedGpu >= 500) {
+            lastGpu = monitor.GetGPUUsagePercentage();
+            lastGpuUpdate = now;
         }
 
         // ui
@@ -87,9 +96,10 @@ int main() {
             if (ImGui::BeginTabItem("Performance")) {
                 ImGui::Text("Useages");
                 ImGui::Separator();
-                ImGui::Text("CPU Usage: %.1f%%", last_cpu);
-                ImGui::Text("GPU Usage: %.1f%%", monitor.GetGPUUsagePercentage());
-                ImGui::Text("VRAM Usage: %.1f%%", monitor.GetGPUUsageVRAM());
+                ImGui::Text("CPU Usage: %.1f%%", lastCpu);
+                ImGui::Text("GPU Usage: %.1f%%", lastGpu);
+                ImGui::Text("GPU: %s", gpuName.c_str());
+                ImGui::Text("VRAM Usage: %.2f GB / %.2f GB",monitor.GetUsedVRAM(),monitor.GetTotalVRAM());
                 ImGui::Text("Memory Usage: %.1f%%", monitor.GetRAMUsagePercentage());
                 ImGui::Text("Memory Usage GB: %.2fGB / %.2fGB", monitor.GetRAMUsageGB(), monitor.GetFreeRAMGB());
 
@@ -97,7 +107,7 @@ int main() {
                 ImGui::Text("Temperatures");
                 ImGui::Separator();
                 ImGui::Text("CPU Temp: %u C", 0);
-                ImGui::Text("GPU Temp: %u C", monitor.GetGPUUsageTemp());
+                ImGui::Text("GPU Temp: %u C", monitor.GetGPUTemp());
                 ImGui::Separator();
                 ImGui::EndTabItem();
             }
