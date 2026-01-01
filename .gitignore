@@ -1,0 +1,31 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+x64/
+Debug/
+Release/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.log
+*.tlog
+*.idb
+*.ipch
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Bb]uilds/
+
+# DLLs (except the ones you need)
+*.dll
+!glfw3.dll
+
+# vcpkg
+vcpkg_installed/
+
+# ImGui ini
+imgui.ini
