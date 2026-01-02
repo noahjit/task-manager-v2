@@ -1,11 +1,13 @@
 #include "SystemMonitor.h"
 #include <Windows.h>
-#include <iostream>
 #include <Pdh.h>
+#include <comdef.h>
+#include <Wbemidl.h>
+#include <string>
 
 #pragma comment(lib, "pdh.lib")
+#pragma comment(lib, "wbemuuid.lib")
 #pragma warning(disable : 4996)
-
 
 void SystemMonitor::InitMemoryEx() {
 	memory.dwLength = sizeof(MEMORYSTATUSEX);
@@ -24,10 +26,80 @@ void SystemMonitor::InitNVML() {
 	nvmlDeviceGetHandleByIndex(0, &nvmlDevice);
 }
 
+void SystemMonitor::InitCOM() {
+	hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	if (FAILED(hr)) return;
+	hr = CoInitializeSecurity(nullptr, -1, nullptr, nullptr, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE, nullptr);
+
+	if (FAILED(hr)) {
+		CoUninitialize();
+		return;
+	}
+
+	hr = CoCreateInstance(CLSID_WbemLocator, nullptr, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&pLoc);
+	hr = pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), nullptr, nullptr, nullptr, 0, nullptr, nullptr, &pSvc);
+
+	if (FAILED(hr)) {
+		std::cout << "Could not connect" << std::endl;
+		return;
+	}
+}
+
+void SystemMonitor::CleanupCOM() {
+	if (pSvc) {
+		pSvc->Release();
+		pSvc = nullptr;
+	}
+
+	if (pLoc) {
+		pLoc->Release();
+		pLoc = nullptr;
+	}
+
+	CoUninitialize();
+}
+
 float SystemMonitor::GetCPUUsagePercentage() {
 	PdhCollectQueryData(handle);
 	PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, 0, &cpuResult);
 	return (float)cpuResult.doubleValue;
+}
+
+std::string SystemMonitor::GetWMIInfo(std::string wmiClass, std::string what) {
+	std::string result;
+	IEnumWbemClassObject* pEnumerator = nullptr;
+	std::wstring query = L"SELECT * FROM " + std::wstring(wmiClass.begin(), wmiClass.end());
+	hr = pSvc->ExecQuery(bstr_t(L"WQL"), bstr_t(query.c_str()),WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,nullptr, &pEnumerator);
+
+	if (FAILED(hr)) {
+		std::cout << "Query failed" << std::endl;
+		return "";
+	}
+
+	IWbemClassObject* pclsObj = nullptr;
+	ULONG uReturn = 0;
+
+	while (pEnumerator) {
+		HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+		if (0 == uReturn) break;
+
+		VARIANT vtProp;
+		std::wstring wide(what.begin(), what.end());
+		pclsObj->Get(wide.c_str(), 0, &vtProp, 0, 0);
+
+		if (vtProp.vt == VT_BSTR)
+			result = (char*)_bstr_t(vtProp.bstrVal);
+		else if (vtProp.vt == VT_UI4 || vtProp.vt == VT_I4)
+			result = std::to_string(vtProp.uintVal);
+		else if (vtProp.vt == VT_UI2 || vtProp.vt == VT_I2)
+			result = std::to_string(vtProp.uiVal);
+
+		VariantClear(&vtProp);
+		pclsObj->Release();
+	}
+
+	pEnumerator->Release();
+	return result;
 }
 
 float SystemMonitor::GetGPUUsagePercentage() {

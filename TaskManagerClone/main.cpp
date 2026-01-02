@@ -5,6 +5,7 @@
 #include <chrono>
 #include "SystemMonitor.h"
 #include <iostream>
+#include <string>
 
 static bool isDragging = false;
 static double dragOffsetX, dragOffsetY;
@@ -42,8 +43,26 @@ int main() {
     SystemMonitor monitor;
     monitor.InitPDH();
     monitor.InitNVML();
+    monitor.InitCOM();
 
     std::string gpuName = monitor.GetGPUModelName();
+    std::string cpuName = monitor.GetWMIInfo("Win32_Processor", "Name");
+
+    std::string cpuCores = monitor.GetWMIInfo("Win32_Processor", "NumberOfCores");
+    std::string cpuThreads = monitor.GetWMIInfo("Win32_Processor", "NumberOfLogicalProcessors");
+    std::string cpuSpeed = monitor.GetWMIInfo("Win32_Processor", "MaxClockSpeed");
+    std::string cpuUpTime = monitor.GetWMIInfo("Win32_Processor", "LastBootUpTime");
+       
+    std::string memorySpeed = monitor.GetWMIInfo("Win32_PhysicalMemory", "Speed");
+    std::string memoryType = monitor.GetWMIInfo("Win32_PhysicalMemory", "SMBIOSMemoryType");
+    int type = std::stoi(memoryType);
+    switch (type)
+    {
+        case 26: type = 4; break; // DDR4
+        case 34: type = 5; break; // DDR5
+        case 24: type = 3; break; // DDR3
+        default: type = 0; break;
+    }
 
     float lastCpu = 0.0f;
     auto lastCpuUpdate = std::chrono::steady_clock::now();
@@ -94,29 +113,40 @@ int main() {
         // ui
         if (ImGui::BeginTabBar("MainTabs")) {
             if (ImGui::BeginTabItem("Performance")) {
-                ImGui::Text("Useages");
-                ImGui::Separator();
-                ImGui::Text("CPU Usage: %.1f%%", lastCpu);
-                ImGui::Text("GPU Usage: %.1f%%", lastGpu);
-                ImGui::Text("GPU: %s", gpuName.c_str());
-                ImGui::Text("VRAM Usage: %.2f GB / %.2f GB",monitor.GetUsedVRAM(),monitor.GetTotalVRAM());
-                ImGui::Text("Memory Usage: %.1f%%", monitor.GetRAMUsagePercentage());
-                ImGui::Text("Memory Usage GB: %.2fGB / %.2fGB", monitor.GetRAMUsageGB(), monitor.GetFreeRAMGB());
-
-                ImGui::Separator();
-                ImGui::Text("Temperatures");
-                ImGui::Separator();
-                ImGui::Text("CPU Temp: %u C", 0);
-                ImGui::Text("GPU Temp: %u C", monitor.GetGPUTemp());
-                ImGui::Separator();
-                ImGui::EndTabItem();
+                if (ImGui::BeginTabBar("PerformanceTabs")) {
+                    if (ImGui::BeginTabItem("GPU")) {
+                        ImGui::Text("%s", gpuName.c_str());
+                        ImGui::Text("Utilization: %.1f%%", lastGpu);
+                        ImGui::Text("VRAM Usage: %.2f GB / %.2f GB", monitor.GetUsedVRAM(), monitor.GetTotalVRAM());
+                        ImGui::Text(u8"GPU Temp: %u°C", monitor.GetGPUTemp());
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("CPU")) {
+                        ImGui::Text("%s", cpuName.c_str());
+                        ImGui::Text("Cores: %d", std::stoi(cpuCores));
+                        ImGui::Text("Threads: %d", std::stoi(cpuThreads));
+                        ImGui::Text("Base Speed: %d MHz", std::stoi(cpuSpeed));
+                        ImGui::Text("Utilization: %.1f%%", lastCpu);
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("Memory")) {
+                        ImGui::Text("Memory Usage: %.1f%%", monitor.GetRAMUsagePercentage());
+                        ImGui::Text("Memory Usage GB: %.2fGB / %.2fGB", monitor.GetRAMUsageGB(), monitor.GetFreeRAMGB());
+                        ImGui::Text("Speed: %d MHz", std::stoi(memorySpeed));
+                        ImGui::Text("Type: DDR%d", type);
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("Storage")) {// storage cleanup, could maybe use code from my other project
+                        ImGui::EndTabItem();
+                    }
+                    ImGui::EndTabItem();
+                    ImGui::EndTabBar();
+                }
             }
             if (ImGui::BeginTabItem("Processes")) { // list of processes like task manager
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Storage")) { // storage cleanup, could maybe use code from my other project
-                ImGui::EndTabItem();
-            }
+
             ImGui::EndTabBar();
         }
 
@@ -148,6 +178,7 @@ int main() {
     }
 
     // cleanup
+    monitor.CleanupCOM();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

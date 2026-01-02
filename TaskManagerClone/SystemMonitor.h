@@ -4,12 +4,16 @@
 #include <Pdh.h>
 #include <nvml.h>
 #include <iostream>
+#include <comdef.h>
+#include <Wbemidl.h>
+
 
 class SystemMonitor
 {
 public:
 	// cpu
 	float GetCPUUsagePercentage();
+	std::string GetWMIInfo(std::string wmiClass, std::string what);
 
 	// gpu
 	float GetGPUUsagePercentage();
@@ -19,6 +23,8 @@ public:
 	// initialize
 	void InitPDH();
 	void InitNVML();
+	void InitCOM();
+	void CleanupCOM();
 
 	// memory
 	float GetUsedVRAM();
@@ -39,5 +45,9 @@ private:
 	nvmlUtilization_t utilStruct;
 	nvmlTemperature_t gpuStruct;
 	nvmlMemory_t memInfo;
+
+	IWbemLocator* pLoc;
+	IWbemServices* pSvc;
+	HRESULT hr;
 };
 
