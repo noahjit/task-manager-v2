@@ -6,15 +6,19 @@
 #include <iostream>
 #include <comdef.h>
 #include <Wbemidl.h>
+#include <vector>
 
 
 class SystemMonitor
 {
 public:
-	// cpu
-	float GetCPUUsagePercentage();
+	//general 
+	std::vector<std::string> GetWMIValues(std::string wmiClass, std::string what); 
 	std::string GetWMIInfo(std::string wmiClass, std::string what);
 
+	// cpu
+	float GetCPUUsagePercentage();
+	
 	// gpu
 	float GetGPUUsagePercentage();
 	unsigned int GetGPUTemp();
@@ -32,8 +36,10 @@ public:
 	float GetRAMUsageGB();
 	float GetTotalVRAM();
 	float GetFreeRAMGB();
+
 private:
 	void InitMemoryEx();
+	
 
 	MEMORYSTATUSEX memory;
 	PDH_HQUERY handle;
@@ -49,5 +55,12 @@ private:
 	IWbemLocator* pLoc;
 	IWbemServices* pSvc;
 	HRESULT hr;
+};
+
+struct driveStruct {
+	std::string driveLetter; // C: / D:
+	std::string interfaceType; // NVMe, SATA, etc
+	std::string size;
+	std::string freeSpace;
 };
 

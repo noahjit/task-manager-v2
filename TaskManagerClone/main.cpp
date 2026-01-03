@@ -1,11 +1,15 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "SystemMonitor.h"
+#include "implot.h"
+
 #include <GLFW/glfw3.h>
 #include <chrono>
-#include "SystemMonitor.h"
 #include <iostream>
 #include <string>
+#include <vector>
+
 
 static bool isDragging = false;
 static double dragOffsetX, dragOffsetY;
@@ -32,6 +36,7 @@ int main() {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
 
@@ -51,10 +56,34 @@ int main() {
     std::string cpuCores = monitor.GetWMIInfo("Win32_Processor", "NumberOfCores");
     std::string cpuThreads = monitor.GetWMIInfo("Win32_Processor", "NumberOfLogicalProcessors");
     std::string cpuSpeed = monitor.GetWMIInfo("Win32_Processor", "MaxClockSpeed");
-    std::string cpuUpTime = monitor.GetWMIInfo("Win32_Processor", "LastBootUpTime");
        
     std::string memorySpeed = monitor.GetWMIInfo("Win32_PhysicalMemory", "Speed");
     std::string memoryType = monitor.GetWMIInfo("Win32_PhysicalMemory", "SMBIOSMemoryType");
+
+    std::vector<std::string> driveLetters = monitor.GetWMIValues("Win32_LogicalDisk", "DeviceID");
+    std::vector<std::string> freeSpaces = monitor.GetWMIValues("Win32_LogicalDisk", "FreeSpace");
+    std::vector<std::string> sizes = monitor.GetWMIValues("Win32_LogicalDisk", "Size");
+    std::vector<std::string> interfaceTypes = monitor.GetWMIValues("Win32_DiskDrive", "InterfaceType");
+    std::vector<std::string> physicalSizes = monitor.GetWMIValues("Win32_DiskDrive", "Size");
+
+    std::vector<driveStruct> drives;
+
+    for (int i = 0; i < driveLetters.size(); i++) {
+        driveStruct d;
+        d.driveLetter = driveLetters[i];
+
+        if (i < freeSpaces.size())
+            d.freeSpace = freeSpaces[i];
+
+        if (i < sizes.size())
+            d.size = sizes[i];
+
+        if (i < interfaceTypes.size())
+            d.interfaceType = interfaceTypes[i];
+
+        drives.push_back(d);
+    }
+
     int type = std::stoi(memoryType);
     switch (type)
     {
@@ -65,10 +94,16 @@ int main() {
     }
 
     float lastCpu = 0.0f;
+    std::vector<float> CpuUtilReadings;
     auto lastCpuUpdate = std::chrono::steady_clock::now();
 
     float lastGpu = 0.0f;
+    std::vector<float> GpuUtilReadings;
     auto lastGpuUpdate = std::chrono::steady_clock::now();
+
+    float lastMemory = 0.0f;
+    std::vector<float> MemoryUtilReadings;
+    auto lastMemoryUpdate = std::chrono::steady_clock::now();
 
     //main loop
     while (!glfwWindowShouldClose(window)) {
@@ -100,14 +135,34 @@ int main() {
         auto now = std::chrono::steady_clock::now();
         auto elapsedCpu = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCpuUpdate).count();
         auto elapsedGpu = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastGpuUpdate).count();
+        auto elapsedMemory = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastMemoryUpdate).count();
 
         if (elapsedCpu >= 500) {
             lastCpu = monitor.GetCPUUsagePercentage();
+            CpuUtilReadings.push_back(lastCpu);
+
+            if (CpuUtilReadings.size() > 50)
+                CpuUtilReadings.erase(CpuUtilReadings.begin());
+
             lastCpuUpdate = now;
         }
         if (elapsedGpu >= 500) {
             lastGpu = monitor.GetGPUUsagePercentage();
+            GpuUtilReadings.push_back(lastGpu);
+
+            if (GpuUtilReadings.size() > 50)
+                GpuUtilReadings.erase(GpuUtilReadings.begin());
+
             lastGpuUpdate = now;
+        }
+        if (elapsedMemory >= 500) {
+            lastMemory = monitor.GetRAMUsagePercentage();
+            MemoryUtilReadings.push_back(lastMemory);
+
+            if (MemoryUtilReadings.size() > 50)
+                MemoryUtilReadings.erase(MemoryUtilReadings.begin());
+
+            lastMemoryUpdate = now;
         }
 
         // ui
@@ -117,26 +172,84 @@ int main() {
                     if (ImGui::BeginTabItem("GPU")) {
                         ImGui::Text("%s", gpuName.c_str());
                         ImGui::Text("Utilization: %.1f%%", lastGpu);
+
+                        if (ImPlot::BeginPlot("GPU Usage", ImVec2(-1, 0), ImPlotFlags_NoInputs | ImPlotFlags_NoMouseText)) {
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 100);
+
+                            ImPlot::SetupAxes("", "Utilization %");
+                            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoTickLabels);
+
+                            int count = GpuUtilReadings.size();
+                            double xMax = count > 0 ? count - 1 : 0;
+                            double xMin = count > 60 ? count - 60 : 0;
+                            ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
+
+                            ImPlot::PlotShaded("", GpuUtilReadings.data(), GpuUtilReadings.size());
+                            ImPlot::EndPlot();
+                        }
+                        
                         ImGui::Text("VRAM Usage: %.2f GB / %.2f GB", monitor.GetUsedVRAM(), monitor.GetTotalVRAM());
                         ImGui::Text(u8"GPU Temp: %u°C", monitor.GetGPUTemp());
                         ImGui::EndTabItem();
                     }
                     if (ImGui::BeginTabItem("CPU")) {
                         ImGui::Text("%s", cpuName.c_str());
+
+                        ImGui::Text("Utilization: %.1f%%", lastCpu);
+
+                        if (ImPlot::BeginPlot("CPU Usage", ImVec2(-1, 0), ImPlotFlags_NoInputs | ImPlotFlags_NoMouseText)) {
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 100);
+
+                            ImPlot::SetupAxes("", "Utilization %");
+                            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoTickLabels);
+
+                            int count = CpuUtilReadings.size();
+                            double xMax = count > 0 ? count - 1 : 0;
+                            double xMin = count > 60 ? count - 60 : 0;
+                            ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
+
+                            ImPlot::PlotShaded("", CpuUtilReadings.data(), CpuUtilReadings.size());
+                            ImPlot::EndPlot();
+                        }
+
                         ImGui::Text("Cores: %d", std::stoi(cpuCores));
                         ImGui::Text("Threads: %d", std::stoi(cpuThreads));
                         ImGui::Text("Base Speed: %d MHz", std::stoi(cpuSpeed));
-                        ImGui::Text("Utilization: %.1f%%", lastCpu);
                         ImGui::EndTabItem();
                     }
                     if (ImGui::BeginTabItem("Memory")) {
-                        ImGui::Text("Memory Usage: %.1f%%", monitor.GetRAMUsagePercentage());
+                        ImGui::Text("Memory Usage: %.1f%%", lastMemory);
+
+                        if (ImPlot::BeginPlot("Memory Usage", ImVec2(-1, 0), ImPlotFlags_NoInputs | ImPlotFlags_NoMouseText)) {
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 100);
+
+                            ImPlot::SetupAxes("", "Utilization %");
+                            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoTickLabels);
+
+                            int count = MemoryUtilReadings.size();
+                            double xMax = count > 0 ? count - 1 : 0;
+                            double xMin = count > 60 ? count - 60 : 0;
+                            ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
+
+                            ImPlot::PlotShaded("", MemoryUtilReadings.data(), MemoryUtilReadings.size());
+                            ImPlot::EndPlot();
+                        }
+
                         ImGui::Text("Memory Usage GB: %.2fGB / %.2fGB", monitor.GetRAMUsageGB(), monitor.GetFreeRAMGB());
                         ImGui::Text("Speed: %d MHz", std::stoi(memorySpeed));
                         ImGui::Text("Type: DDR%d", type);
                         ImGui::EndTabItem();
                     }
                     if (ImGui::BeginTabItem("Storage")) {// storage cleanup, could maybe use code from my other project
+
+                        for (const auto& drive : drives) {
+                            long long freeSpace = std::stoll(drive.freeSpace) / (1024 * 1024 * 1024);
+                            long long driveSize = std::stoll(drive.size) / (1024 * 1024 * 1024);
+                            long long gbUsed = driveSize - freeSpace;
+                            ImGui::Text("%s", drive.driveLetter.c_str());
+                            ImGui::Text("Space: %lldGB / %lldGB", gbUsed, driveSize);
+                        }
+
                         ImGui::EndTabItem();
                     }
                     ImGui::EndTabItem();
@@ -182,6 +295,7 @@ int main() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+    ImPlot::DestroyContext();
 
     glfwDestroyWindow(window);
     glfwTerminate();

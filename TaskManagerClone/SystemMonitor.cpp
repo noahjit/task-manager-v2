@@ -4,6 +4,7 @@
 #include <comdef.h>
 #include <Wbemidl.h>
 #include <string>
+#include <vector>
 
 #pragma comment(lib, "pdh.lib")
 #pragma comment(lib, "wbemuuid.lib")
@@ -67,13 +68,24 @@ float SystemMonitor::GetCPUUsagePercentage() {
 
 std::string SystemMonitor::GetWMIInfo(std::string wmiClass, std::string what) {
 	std::string result;
+
+	auto values = GetWMIValues(wmiClass, what);
+
+	if (!values.empty())
+		return values.front();
+
+	return {};
+}
+
+std::vector<std::string> SystemMonitor::GetWMIValues(std::string wmiClass, std::string what) {
+	std::vector<std::string> result;
 	IEnumWbemClassObject* pEnumerator = nullptr;
 	std::wstring query = L"SELECT * FROM " + std::wstring(wmiClass.begin(), wmiClass.end());
-	hr = pSvc->ExecQuery(bstr_t(L"WQL"), bstr_t(query.c_str()),WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,nullptr, &pEnumerator);
+	hr = pSvc->ExecQuery(bstr_t(L"WQL"), bstr_t(query.c_str()), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &pEnumerator);
 
 	if (FAILED(hr)) {
 		std::cout << "Query failed" << std::endl;
-		return "";
+		return {};
 	}
 
 	IWbemClassObject* pclsObj = nullptr;
@@ -88,11 +100,11 @@ std::string SystemMonitor::GetWMIInfo(std::string wmiClass, std::string what) {
 		pclsObj->Get(wide.c_str(), 0, &vtProp, 0, 0);
 
 		if (vtProp.vt == VT_BSTR)
-			result = (char*)_bstr_t(vtProp.bstrVal);
+			result.push_back((char*)_bstr_t(vtProp.bstrVal));
 		else if (vtProp.vt == VT_UI4 || vtProp.vt == VT_I4)
-			result = std::to_string(vtProp.uintVal);
+			result.push_back(std::to_string(vtProp.uintVal));
 		else if (vtProp.vt == VT_UI2 || vtProp.vt == VT_I2)
-			result = std::to_string(vtProp.uiVal);
+			result.push_back(std::to_string(vtProp.uiVal));
 
 		VariantClear(&vtProp);
 		pclsObj->Release();
