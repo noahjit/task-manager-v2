@@ -3,12 +3,14 @@
 #include "imgui_impl_opengl3.h"
 #include "SystemMonitor.h"
 #include "implot.h"
+#include "StoragePage.h"
 
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 
 static bool isDragging = false;
@@ -46,6 +48,7 @@ int main() {
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     SystemMonitor monitor;
+    StoragePage storage;
     monitor.InitPDH();
     monitor.InitNVML();
     monitor.InitCOM();
@@ -105,6 +108,7 @@ int main() {
     std::vector<float> MemoryUtilReadings;
     auto lastMemoryUpdate = std::chrono::steady_clock::now();
 
+    static int currentDriveSelection = 0;
     //main loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -241,15 +245,43 @@ int main() {
                         ImGui::EndTabItem();
                     }
                     if (ImGui::BeginTabItem("Storage")) {// storage cleanup, could maybe use code from my other project
+                        if (ImGui::BeginCombo("Drives", drives[currentDriveSelection].driveLetter.c_str())) {
 
-                        for (const auto& drive : drives) {
-                            long long freeSpace = std::stoll(drive.freeSpace) / (1024 * 1024 * 1024);
-                            long long driveSize = std::stoll(drive.size) / (1024 * 1024 * 1024);
-                            long long gbUsed = driveSize - freeSpace;
-                            ImGui::Text("%s", drive.driveLetter.c_str());
-                            ImGui::Text("Space: %lldGB / %lldGB", gbUsed, driveSize);
+                            for (int i = 0; i < drives.size(); i++) {
+                                bool selected = (currentDriveSelection == i);
+
+                                if (ImGui::Selectable(drives[i].driveLetter.c_str(), selected))
+                                    currentDriveSelection = i;
+
+                                if (selected)
+                                    ImGui::SetItemDefaultFocus();
+                            }
+                            ImGui::EndCombo();
                         }
 
+                        driveStruct drive = drives[currentDriveSelection];
+
+                        long long freeSpace = std::stoll(drive.freeSpace) / (1024 * 1024 * 1024);
+                        long long driveSize = std::stoll(drive.size) / (1024 * 1024 * 1024);
+                        long long gbUsed = driveSize - freeSpace;
+
+                        ImGui::Text("Space: %lldGB / %lldGB", gbUsed, driveSize);
+
+                        std::filesystem::path driveSelected = drive.driveLetter + '\\';
+
+                        if (ImGui::BeginTable("Storage", 2)) {
+                            ImGui::TableSetupColumn("File/Folder", ImGuiTableColumnFlags_WidthStretch);
+                            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+                            ImGui::TableHeadersRow();
+
+                            storage.DrawDirectoryTree(driveSelected);
+                            
+                            ImGui::EndTable();
+                        }
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("Bin")) {
+                        storage.ShowBinnedItems();
                         ImGui::EndTabItem();
                     }
                     ImGui::EndTabItem();

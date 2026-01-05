@@ -145,11 +145,13 @@
     <ClCompile Include="..\external\implot\implot.cpp" />
     <ClCompile Include="..\external\implot\implot_items.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="StoragePage.cpp" />
     <ClCompile Include="SystemMonitor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\implot\implot.h" />
     <ClInclude Include="..\external\implot\implot_internal.h" />
+    <ClInclude Include="StoragePage.h" />
     <ClInclude Include="SystemMonitor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
