@@ -269,19 +269,26 @@ int main() {
 
                         std::filesystem::path driveSelected = drive.driveLetter + '\\';
 
-                        if (ImGui::BeginTable("Storage", 2)) {
+                        if (ImGui::BeginTable("Storage", 2, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable)) {
                             ImGui::TableSetupColumn("File/Folder", ImGuiTableColumnFlags_WidthStretch);
-                            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+                            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_PreferSortDescending);
                             ImGui::TableHeadersRow();
 
                             storage.DrawDirectoryTree(driveSelected);
-                            
+
                             ImGui::EndTable();
                         }
                         ImGui::EndTabItem();
                     }
                     if (ImGui::BeginTabItem("Bin")) {
-                        storage.ShowBinnedItems();
+                        if (ImGui::BeginTable("BinTable", 2)) {
+                            ImGui::TableSetupColumn("File/Folder", ImGuiTableColumnFlags_WidthStretch);
+                            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+                            ImGui::TableHeadersRow();
+
+                            storage.ShowBinnedItems();
+                            ImGui::EndTable();
+                        }
                         ImGui::EndTabItem();
                     }
                     ImGui::EndTabItem();
@@ -291,8 +298,38 @@ int main() {
             if (ImGui::BeginTabItem("Processes")) { // list of processes like task manager
                 ImGui::EndTabItem();
             }
+            ImGui::EndTabBar();       
+        }
 
-            ImGui::EndTabBar();
+        if (storage.openFailedPopup) {
+            ImGui::OpenPopup("Failed");
+            storage.openFailedPopup = false;
+        }
+        if (storage.openSuccessPopup) {
+            ImGui::OpenPopup("Success");
+            storage.openSuccessPopup = false;
+        }
+
+        if (ImGui::BeginPopupModal("Failed", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Successully deleted with some failures.");
+            for (auto item : storage.failedDeletes) {
+                ImGui::Text("Failed to delete item: %s", item.string().c_str());
+            }
+
+            if (ImGui::Button("Confirm")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+            storage.binnedItems.clear();
+        }
+        if (ImGui::BeginPopupModal("Success")) {
+            ImGui::Text("Successully deleted all binned items.");
+
+            if (ImGui::Button("Confirm")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+            storage.binnedItems.clear();
         }
 
 

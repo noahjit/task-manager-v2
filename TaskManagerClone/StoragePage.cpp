@@ -7,7 +7,7 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
     std::vector<std::filesystem::directory_entry> files;
     std::vector<std::filesystem::directory_entry> folders;
 
-    if (depth > 5)
+    if (depth > 7)
         return;
 
     std::error_code ec;
@@ -150,12 +150,51 @@ void StoragePage::BinItem(const std::filesystem::path& path, uintmax_t size) {
 }
 
 void StoragePage::ShowBinnedItems() {
+    uintmax_t total = 0;
     if (binnedItems.empty()) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
         ImGui::Text("No Items in bin.");
         return;
     }
 
-    //for (auto it : binnedItems) {
-    //    ImGui::Text("%s", it.first.c_str());
-    //}
+    for (auto it : binnedItems) {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("%s", it.first.string().c_str());
+        ImGui::TableSetColumnIndex(1);
+
+        total += it.second;
+
+        if (it.second > 10ull * 1024 * 1024 * 1024) {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", FormatSize(it.second));
+        }
+        else if (it.second > 5ull * 1024 * 1024 * 1024) {
+            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(it.second));
+        }
+        else {
+            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(it.second));
+        }
+    }
+
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("Total: %s", FormatSize(total));
+
+    if (ImGui::Button("Delete permanently")) {
+        failedDeletes.clear();
+        std::error_code ec;
+        hasFailures = false;
+
+        for (auto entry : binnedItems) {
+            std::filesystem::remove_all(entry.first, ec);
+
+            if (ec) {
+                failedDeletes.push_back(entry.first);
+                hasFailures = true;
+            }
+        }
+
+        openFailedPopup = hasFailures;
+        openSuccessPopup = !hasFailures;
+    }
 }
