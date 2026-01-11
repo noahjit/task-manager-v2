@@ -19,8 +19,8 @@ class StoragePage
 		bool openSuccessPopup = false;
 		std::vector<std::filesystem::path> failedDeletes;
 
-	private:
 		std::string FormatSize(long long bytes);
+	private:
 		uintmax_t CalculateFolderSize(const std::filesystem::path&);
 		void RequestFolderSize(const std::filesystem::path&);
 		void BinItem(const std::filesystem::path&, uintmax_t);

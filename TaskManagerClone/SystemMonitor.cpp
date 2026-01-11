@@ -5,6 +5,7 @@
 #include <Wbemidl.h>
 #include <string>
 #include <vector>
+#include <TlHelp32.h>
 
 #pragma comment(lib, "pdh.lib")
 #pragma comment(lib, "wbemuuid.lib")
@@ -114,6 +115,63 @@ std::vector<std::string> SystemMonitor::GetWMIValues(std::string wmiClass, std::
 	return result;
 }
 
+std::vector<Process> SystemMonitor::GetWMIProcesses() {
+	std::vector<Process> processes;
+
+	IEnumWbemClassObject* pEnumerator = nullptr;
+	HRESULT HR = pSvc->ExecQuery(bstr_t(L"WQL"), bstr_t("SELECT * FROM Win32_Process"), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &pEnumerator);
+
+	if (FAILED(HR)) 
+		return processes;
+
+	IWbemClassObject* pclsObj = nullptr;
+	ULONG uReturn = 0;
+
+	while (pEnumerator) {
+		HRESULT HR = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+		if (0 == uReturn) break;
+		
+		Process process;
+		VARIANT vtProp;
+
+		HR = pclsObj->Get(L"Name", 0, &vtProp, 0, 0);
+		if (SUCCEEDED(HR) && vtProp.vt == VT_BSTR) {
+			process.name = _com_util::ConvertBSTRToString(vtProp.bstrVal);
+		}
+		VariantClear(&vtProp);
+
+		HR = pclsObj->Get(L"ProcessId", 0, &vtProp, 0, 0);
+		if (SUCCEEDED(HR)) {
+			process.pid = vtProp.uintVal;
+		}
+		VariantClear(&vtProp);
+
+		HR = pclsObj->Get(L"WorkingSetSize", 0, &vtProp, 0, 0);
+		if (SUCCEEDED(HR) && vtProp.vt == VT_BSTR) {
+			process.memoryUse = _wtoi64(vtProp.bstrVal);
+		}
+		VariantClear(&vtProp);
+
+		HR = pclsObj->Get(L"CommandLine", 0, &vtProp, 0, 0);
+		if (SUCCEEDED(HR) && vtProp.vt == VT_BSTR) {
+			process.commandLine = _com_util::ConvertBSTRToString(vtProp.bstrVal);
+		}
+		VariantClear(&vtProp);
+
+		HR = pclsObj->Get(L"CreationDate", 0, &vtProp, 0, 0);
+		if (SUCCEEDED(HR) && vtProp.vt == VT_BSTR) {
+			process.creationDate = _com_util::ConvertBSTRToString(vtProp.bstrVal);
+		}
+		VariantClear(&vtProp);
+		
+		processes.push_back(process);
+		pclsObj->Release();
+	}
+
+	pEnumerator->Release();
+	return processes;
+}
+
 float SystemMonitor::GetGPUUsagePercentage() {
 	nvmlReturn_t result = nvmlDeviceGetUtilizationRates(nvmlDevice, &utilStruct);
 	if (result != NVML_SUCCESS) return -1.0f;
@@ -162,4 +220,32 @@ float SystemMonitor::GetFreeRAMGB() {
 	InitMemoryEx();
 	float gb = memory.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f);
 	return gb;
+}
+
+std::string SystemMonitor::ParseWMIDate(const std::string& wmiDate) {
+	// WMI format: "20250108143022.500000-000"
+	// Extract: YYYYMMDDHHMMSS
+	if (wmiDate.length() >= 14) {
+		std::string year = wmiDate.substr(0, 4);
+		std::string month = wmiDate.substr(4, 2);
+		std::string day = wmiDate.substr(6, 2);
+		std::string hour = wmiDate.substr(8, 2);
+		std::string min = wmiDate.substr(10, 2);
+		std::string sec = wmiDate.substr(12, 2);
+
+		return year + "-" + month + "-" + day + " " + hour + ":" + min + ":" + sec;
+	}
+	return wmiDate;
+}
+
+bool SystemMonitor::terminateProcessByPID(DWORD id) {
+	HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, id);
+
+	if (hProcess == NULL) {
+		return false;
+	}
+
+	bool successs = TerminateProcess(hProcess, 1);
+	CloseHandle(hProcess);
+	return successs;
 }

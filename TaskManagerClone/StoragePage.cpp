@@ -27,11 +27,18 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
         uintmax_t size = 0;
         auto sizeIterator = folderSizes.find(entry.path());
         auto calcIterator = folderCalculating.find(entry.path());
+        bool isBinned = binnedItems.find(entry.path()) != binnedItems.end();
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
+
+        if (isBinned)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
         
         bool expanded = ImGui::TreeNode(entry.path().filename().string().c_str());
+
+        if (isBinned)
+            ImGui::PopStyleColor();
 
         if (ImGui::BeginPopupContextItem()) {
             if (ImGui::MenuItem("Move to bin")) {
@@ -42,23 +49,32 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
 
         ImGui::TableSetColumnIndex(1);
 
+        if (isBinned) 
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        
         if (sizeIterator != folderSizes.end()) {
-            if (sizeIterator->second > 10ull * 1024 * 1024 * 1024) { // maybe let them pick what > gb should be considered red? 10gb for now.
-                ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s" , FormatSize(sizeIterator->second));;
+            if (!isBinned) {
+
+                if (sizeIterator->second > 10ull * 1024 * 1024 * 1024)
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", FormatSize(sizeIterator->second));
+                else if (sizeIterator->second > 5ull * 1024 * 1024 * 1024) 
+                    ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(sizeIterator->second));
+                else 
+                    ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(sizeIterator->second));
             }
-            else if (sizeIterator->second > 5ull * 1024 * 1024 * 1024) {
-                ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(sizeIterator->second));;
-            }
-            else {
-                ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(sizeIterator->second));;
-            }
+            else 
+                ImGui::Text("%s", FormatSize(sizeIterator->second));
+            
         }
         else {
-            if (calcIterator == folderCalculating.end()) {
+            if (calcIterator == folderCalculating.end())
                 RequestFolderSize(entry.path());
-            }
+            
             ImGui::Text("...");
         }
+
+        if (isBinned)
+            ImGui::PopStyleColor();
 
         if (expanded) {
             DrawDirectoryTree(entry.path(), depth + 1);
@@ -67,10 +83,18 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
     }
 
     for (std::filesystem::directory_entry entry : files) {
+        bool isBinned = binnedItems.find(entry.path()) != binnedItems.end();
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         std::string size = FormatSize(entry.file_size());
+
+        if (isBinned) 
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+
         if (ImGui::TreeNodeEx(entry.path().filename().string().c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen)) {}
+
+        if (isBinned) 
+            ImGui::PopStyleColor();
 
         if (ImGui::BeginPopupContextItem()) {
             if (ImGui::MenuItem("Move to bin")) {
@@ -81,15 +105,24 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
 
         ImGui::TableSetColumnIndex(1);
 
-        if (std::stoi(size) > 10ull * 1024 * 1024 * 1024) {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", size);
+        if (isBinned)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+
+        if (!isBinned) {
+            if (std::stoi(size) > 10ull * 1024 * 1024 * 1024) 
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", size.c_str());
+            else if (std::stoi(size) > 5ull * 1024 * 1024 * 1024) 
+                ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", size.c_str());
+            else 
+                ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", size.c_str());
         }
-        else if (std::stoi(size) > 5ull * 1024 * 1024 * 1024) {
-            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", size);
+        else 
+            ImGui::Text("%s", size.c_str());
+
+        if (isBinned) {
+            ImGui::PopStyleColor();
         }
-        else {
-            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", size);
-        }
+        
     }
 }
 
@@ -158,23 +191,36 @@ void StoragePage::ShowBinnedItems() {
         return;
     }
 
-    for (auto it : binnedItems) {
+    for (auto it = binnedItems.begin(); it != binnedItems.end();) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("%s", it.first.string().c_str());
+        ImGui::Selectable(it->first.string().c_str(), false);
         ImGui::TableSetColumnIndex(1);
 
-        total += it.second;
+        total += it->second;
 
-        if (it.second > 10ull * 1024 * 1024 * 1024) {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", FormatSize(it.second));
+        bool shouldDelete = false;
+        if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem("Restore")) {
+                shouldDelete = true;
+            }
+            ImGui::EndPopup();
         }
-        else if (it.second > 5ull * 1024 * 1024 * 1024) {
-            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(it.second));
+
+        if (it->second > 10ull * 1024 * 1024 * 1024) {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", FormatSize(it->second));
+        }
+        else if (it->second > 5ull * 1024 * 1024 * 1024) {
+            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(it->second));
         }
         else {
-            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(it.second));
+            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(it->second));
         }
+
+        if (shouldDelete)
+            it = binnedItems.erase(it);
+        else
+            it++;
     }
 
     ImGui::TableSetColumnIndex(1);

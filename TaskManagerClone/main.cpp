@@ -26,8 +26,9 @@ int main() {
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(400, 500, "Overlay", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Overlay", nullptr, nullptr);
     if (!window) {
         glfwTerminate();
         return -1;
@@ -69,6 +70,8 @@ int main() {
     std::vector<std::string> interfaceTypes = monitor.GetWMIValues("Win32_DiskDrive", "InterfaceType");
     std::vector<std::string> physicalSizes = monitor.GetWMIValues("Win32_DiskDrive", "Size");
 
+    std::vector<Process> processes = monitor.GetWMIProcesses();
+
     std::vector<driveStruct> drives;
 
     for (int i = 0; i < driveLetters.size(); i++) {
@@ -109,6 +112,7 @@ int main() {
     auto lastMemoryUpdate = std::chrono::steady_clock::now();
 
     static int currentDriveSelection = 0;
+
     //main loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -117,10 +121,11 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(ImVec2(400, 500));
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(400, 500), ImVec2(FLT_MAX, FLT_MAX));
 
-        ImGui::Begin("System Monitor", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("System Monitor", nullptr);
 
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) {
             double mouseX, mouseY;
@@ -168,6 +173,9 @@ int main() {
 
             lastMemoryUpdate = now;
         }
+
+        static bool showSuccessPopup = false;
+        static bool showFailedPopup = false;
 
         // ui
         if (ImGui::BeginTabBar("MainTabs")) {
@@ -269,7 +277,7 @@ int main() {
 
                         std::filesystem::path driveSelected = drive.driveLetter + '\\';
 
-                        if (ImGui::BeginTable("Storage", 2, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable)) {
+                        if (ImGui::BeginTable("Storage", 2, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable)) { // figure out how to sort size column. figure out how to grey out text when added to bin.
                             ImGui::TableSetupColumn("File/Folder", ImGuiTableColumnFlags_WidthStretch);
                             ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_PreferSortDescending);
                             ImGui::TableHeadersRow();
@@ -295,12 +303,71 @@ int main() {
                     ImGui::EndTabBar();
                 }
             }
-            if (ImGui::BeginTabItem("Processes")) { // list of processes like task manager
+            if (ImGui::BeginTabItem("Processes")) {
+                std::sort(processes.begin(), processes.end(),[](const Process& a, const Process& b) {return a.memoryUse > b.memoryUse;});
+                if (ImGui::BeginTable("ProcessTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                    ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Memory", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Command Line", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Creation Date", ImGuiTableColumnFlags_WidthStretch);
+
+                    ImGui::TableHeadersRow();
+
+                    for (auto it = processes.begin(); it != processes.end(); ) {
+                        Process& p = *it;
+                        ImGui::TableNextRow();
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%u", p.pid);
+
+                        std::string uniqueID = p.name + "##" + std::to_string(p.pid);
+                        ImGui::TableNextColumn();
+                        ImGui::Selectable(uniqueID.c_str());
+
+                        bool shouldRemove = false;
+                        if (ImGui::BeginPopupContextItem()) {
+                            if (ImGui::MenuItem("End Task")) {
+                                if (monitor.terminateProcessByPID({ p.pid })) {
+                                    showSuccessPopup = true;
+                                    shouldRemove = true;
+                                }   
+                                else
+                                    showFailedPopup = true;
+                            }
+                            ImGui::EndPopup();
+                        }
+
+                        if (shouldRemove)
+                            it = processes.erase(it);
+                        else
+                            it++;
+
+                        ImGui::TableNextColumn();
+
+                        if (p.memoryUse > 1ull * 1024 * 1024 * 1024)
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", storage.FormatSize(p.memoryUse));
+                        else if (p.memoryUse > 350ull * 1024 * 1024)
+                            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", storage.FormatSize(p.memoryUse));
+                        else
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", storage.FormatSize(p.memoryUse));
+
+                        std::string cmdLineID = p.commandLine.empty() ? ("##cmdline" + std::to_string(p.pid)) : p.commandLine;
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(cmdLineID.c_str());
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(monitor.ParseWMIDate(p.creationDate).c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();       
         }
 
+        // deleting files
         if (storage.openFailedPopup) {
             ImGui::OpenPopup("Failed");
             storage.openFailedPopup = false;
@@ -330,6 +397,32 @@ int main() {
             }
             ImGui::EndPopup();
             storage.binnedItems.clear();
+        }
+
+        // terminate process
+        if (showSuccessPopup) {
+            ImGui::OpenPopup("TerminateSuccess");
+            showSuccessPopup = false;
+        }
+        if (showFailedPopup) {
+            ImGui::OpenPopup("TerminateFailed");
+            showFailedPopup = false;
+        }
+
+        if (ImGui::BeginPopupModal("TerminateSuccess", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Successfully terminated process.");
+            if (ImGui::Button("Close")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopupModal("TerminateFailed", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Failed to terminate process. Did you run the program as administrator?");
+            if (ImGui::Button("Close")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
 

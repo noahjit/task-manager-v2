@@ -8,22 +8,29 @@
 #include <Wbemidl.h>
 #include <vector>
 
+struct Process {
+	std::string name;
+	DWORD pid = 0;
+	ULONGLONG memoryUse = 0;
+	std::string commandLine;
+	std::string creationDate;
+};
 
 class SystemMonitor
 {
 public:
 	//general 
-	std::vector<std::string> GetWMIValues(std::string wmiClass, std::string what); 
+	std::vector<std::string> GetWMIValues(std::string wmiClass, std::string what);
 	std::string GetWMIInfo(std::string wmiClass, std::string what);
 
 	// cpu
 	float GetCPUUsagePercentage();
-	
+
 	// gpu
 	float GetGPUUsagePercentage();
 	unsigned int GetGPUTemp();
 	std::string GetGPUModelName();
-	
+
 	// initialize
 	void InitPDH();
 	void InitNVML();
@@ -37,9 +44,14 @@ public:
 	float GetTotalVRAM();
 	float GetFreeRAMGB();
 
+	// processes
+	std::vector<Process> GetWMIProcesses();
+	std::string ParseWMIDate(const std::string& wmiDate);
+	bool terminateProcessByPID(DWORD id);
+
 private:
 	void InitMemoryEx();
-	
+
 
 	MEMORYSTATUSEX memory;
 	PDH_HQUERY handle;
@@ -63,4 +75,3 @@ struct driveStruct {
 	std::string size;
 	std::string freeSpace;
 };
-
