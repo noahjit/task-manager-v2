@@ -44,6 +44,9 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
             if (ImGui::MenuItem("Move to bin")) {
                 BinItem(entry.path(), sizeIterator->second);
             }
+            if (ImGui::MenuItem("Organise directory")) {
+                OrganiseDirectory(entry.path());
+            }
             ImGui::EndPopup();
         }
 
@@ -244,3 +247,96 @@ void StoragePage::ShowBinnedItems() {
         openSuccessPopup = !hasFailures;
     }
 }
+
+void StoragePage::OrganiseDirectory(std::filesystem::path path) {
+    if (!std::filesystem::exists(path)) {
+        return;
+    }
+
+    try {
+        for (auto const& entry : std::filesystem::recursive_directory_iterator{ path }) {
+            auto it = extension_to_folder.find(entry.path().extension());
+
+            if (!std::filesystem::is_regular_file(entry.path()))
+                continue;
+
+            if (it != extension_to_folder.end())
+                MkDirAndMove(it->second, entry);
+            else
+                MkDirAndMove("Others", entry);
+        }
+    }
+    catch (const std::filesystem::filesystem_error e) {
+        return;
+    }
+}
+
+void StoragePage::MkDirAndMove(std::string folderName, std::filesystem::directory_entry entry) {
+    const std::filesystem::path newPath = entry.path().parent_path() / folderName;
+    const std::filesystem::path finalPath = newPath / entry.path().filename();
+
+    if (!std::filesystem::exists(newPath))
+        std::filesystem::create_directory(newPath);
+
+    try {
+        std::filesystem::rename(entry.path(), finalPath);
+    }
+    catch (const std::filesystem::filesystem_error e) {
+        return;
+    }
+}
+
+const std::unordered_map<std::filesystem::path, std::string> StoragePage::extension_to_folder =
+{
+    // documents
+    {".doc", "Documents"},
+    {".docx", "Documents"},
+    {".pdf", "Documents"},
+    {".txt", "Documents"},
+    {".odt", "Documents"},
+    {".ppt", "Presentations"},
+    {".pptx", "Presentations"},
+
+    // image
+    {".jpg", "Images"},
+    {".jpeg", "Images"},
+    {".png", "Images"},
+    {".gif", "Images"},
+    {".bmp", "Images"},
+    {".tif", "Images"},
+    {".tiff", "Images"},
+    {".bmp", "Images"},
+
+    // audio
+    {".mp3", "Audio"},
+    {".wav", "Audio"},
+    {".aac", "Audio"},
+    {".m4a", "Audio"},
+    {".ogg", "Audio"},
+
+    // video
+    {".mp4", "Video"},
+    {".avi", "Video"},
+    {".mov", "Video"},
+    {".wmv", "Video"},
+    {".flv", "Video"},
+
+    // archive
+    {".zip", "Archives"},
+    {".rar", "Archives"},
+    {".7z", "Archives"},
+
+    // executables
+    {".exe", "Executables"},
+    {".bat", "Scripts"},
+    {".sh", "Scripts"},
+    {".js", "Scripts"},
+    {".dll", "Executables"},
+
+    // data
+    {".csv", "Data"},
+    {".xml", "Data"},
+    {".json", "Data"},
+    {".ini", "Data"},
+    {".sql", "Data"}
+};

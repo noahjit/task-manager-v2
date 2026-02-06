@@ -277,7 +277,7 @@ int main() {
 
                         std::filesystem::path driveSelected = drive.driveLetter + '\\';
 
-                        if (ImGui::BeginTable("Storage", 2, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable)) { // figure out how to sort size column. figure out how to grey out text when added to bin.
+                        if (ImGui::BeginTable("Storage", 2, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable)) { // figure out how to sort size column
                             ImGui::TableSetupColumn("File/Folder", ImGuiTableColumnFlags_WidthStretch);
                             ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_PreferSortDescending);
                             ImGui::TableHeadersRow();
