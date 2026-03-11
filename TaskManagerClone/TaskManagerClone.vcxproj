@@ -105,12 +105,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\includ$(ProjectDir)external\imgui;$(ProjectDir)external\imgui\backends;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.1\include;C:\Users\noah arrowsmith\source\repos\TaskManagerClone\external\implot</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\external\imgui;$(ProjectDir)..\external\imgui\backends;$(ProjectDir)..\external\implot;$(ProjectDir)..\external\vcpkg\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.1\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\external\lib;$(CUDA_PATH)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)glfw3dll.lib;opengl32.lib;pdh.lib;nvml.lib;gdi32.lib;shell32.lib;user32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -123,14 +123,14 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\vcpkg\installed\x64-windows\include;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\includ$(ProjectDir)external\imgui;$(ProjectDir)external\imgui\backends;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.1\include;C:\Users\noah arrowsmith\source\repos\TaskManagerClone\external\implot</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\external\imgui;$(ProjectDir)..\external\imgui\backends;$(ProjectDir)..\external\implot;$(ProjectDir)..\external\vcpkg\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.1\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\external\lib;$(CUDA_PATH)\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)glfw3dll.lib;opengl32.lib;pdh.lib;nvml.lib;gdi32.lib;shell32.lib;user32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
