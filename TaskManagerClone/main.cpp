@@ -13,7 +13,6 @@
 #include <vector>
 #include <filesystem>
 
-
 static bool isDragging = false;
 static double dragOffsetX, dragOffsetY;
 
