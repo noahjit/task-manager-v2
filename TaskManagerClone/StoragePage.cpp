@@ -25,16 +25,26 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
    
     for (std::filesystem::directory_entry entry : folders) {
         uintmax_t size = 0;
-        auto sizeIterator = folderSizes.find(entry.path());
-        auto calcIterator = folderCalculating.find(entry.path());
-        bool isBinned = binnedItems.find(entry.path()) != binnedItems.end();
+        bool sizeKnown = false;
+        bool isCalculating = false;
+        bool isBinned = false;
+
+        {
+            std::lock_guard<std::mutex> lock(folderSizeMutex);
+            auto sizeIterator = folderSizes.find(entry.path());
+            auto calcIterator = folderCalculating.find(entry.path());
+            sizeKnown = sizeIterator != folderSizes.end();
+            if (sizeKnown) size = sizeIterator->second;
+            isCalculating = calcIterator != folderCalculating.end() && calcIterator->second;
+            isBinned = binnedItems.find(entry.path()) != binnedItems.end();
+        }
 
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
 
         if (isBinned)
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        
+
         bool expanded = ImGui::TreeNode(entry.path().filename().string().c_str());
 
         if (isBinned)
@@ -42,7 +52,7 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
 
         if (ImGui::BeginPopupContextItem()) {
             if (ImGui::MenuItem("Move to bin")) {
-                BinItem(entry.path(), sizeIterator->second);
+                BinItem(entry.path(), size);
             }
             if (ImGui::MenuItem("Organise directory")) {
                 OrganiseDirectory(entry.path());
@@ -52,27 +62,24 @@ void StoragePage::DrawDirectoryTree(const std::filesystem::path& drive, int dept
 
         ImGui::TableSetColumnIndex(1);
 
-        if (isBinned) 
+        if (isBinned)
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        
-        if (sizeIterator != folderSizes.end()) {
-            if (!isBinned) {
 
-                if (sizeIterator->second > 10ull * 1024 * 1024 * 1024)
-                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", FormatSize(sizeIterator->second));
-                else if (sizeIterator->second > 5ull * 1024 * 1024 * 1024) 
-                    ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(sizeIterator->second));
-                else 
-                    ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(sizeIterator->second));
+        if (sizeKnown) {
+            if (!isBinned) {
+                if (size > 10ull * 1024 * 1024 * 1024)
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", FormatSize(size).c_str());
+                else if (size > 5ull * 1024 * 1024 * 1024)
+                    ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", FormatSize(size).c_str());
+                else
+                    ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", FormatSize(size).c_str());
             }
-            else 
-                ImGui::Text("%s", FormatSize(sizeIterator->second));
-            
+            else
+                ImGui::Text("%s", FormatSize(size).c_str());
         }
         else {
-            if (calcIterator == folderCalculating.end())
+            if (!isCalculating)
                 RequestFolderSize(entry.path());
-            
             ImGui::Text("...");
         }
 

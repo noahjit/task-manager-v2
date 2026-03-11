@@ -70,7 +70,7 @@ int main() {
     monitor.InitNVML();
     monitor.InitCOM();
 
-    std::string gpuName = monitor.GetGPUModelName();
+    std::string gpuName = monitor.GetGPUModelName(); // need to detect if this returns nothing , in that case they have no GPU
     std::string cpuName = monitor.GetWMIInfo("Win32_Processor", "Name");
 
     std::string cpuCores = monitor.GetWMIInfo("Win32_Processor", "NumberOfCores");
@@ -215,7 +215,7 @@ int main() {
                             ImPlot::PlotShaded("", GpuUtilReadings.data(), GpuUtilReadings.size());
                             ImPlot::EndPlot();
                         }
-                        
+
                         ImGui::Text("VRAM Usage: %.2f GB / %.2f GB", monitor.GetUsedVRAM(), monitor.GetTotalVRAM());
                         ImGui::Text(u8"GPU Temp: %u°C", monitor.GetGPUTemp());
                         ImGui::EndTabItem();
@@ -362,11 +362,11 @@ int main() {
                         ImGui::TableNextColumn();
 
                         if (p.memoryUse > 1ull * 1024 * 1024 * 1024)
-                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", storage.FormatSize(p.memoryUse));
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", storage.FormatSize(p.memoryUse).c_str());
                         else if (p.memoryUse > 350ull * 1024 * 1024)
-                            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", storage.FormatSize(p.memoryUse));
+                            ImGui::TextColored(ImVec4(1, 0.647f, 0, 1), "%s", storage.FormatSize(p.memoryUse).c_str());
                         else
-                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", storage.FormatSize(p.memoryUse));
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", storage.FormatSize(p.memoryUse).c_str());
 
                         std::string cmdLineID = p.commandLine.empty() ? ("##cmdline" + std::to_string(p.pid)) : p.commandLine;
                         ImGui::TableNextColumn();
