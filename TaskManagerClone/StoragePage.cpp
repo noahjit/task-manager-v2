@@ -286,7 +286,7 @@ void StoragePage::MkDirAndMove(std::string folderName, std::filesystem::director
     }
 }
 
-const std::unordered_map<std::filesystem::path, std::string> StoragePage::extension_to_folder =
+const std::unordered_map<std::filesystem::path, std::string, PathHash> StoragePage::extension_to_folder =
 {
     // documents
     {".doc", "Documents"},

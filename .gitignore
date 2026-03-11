@@ -20,9 +20,10 @@ Release/
 [Oo]bj/
 [Bb]uilds/
 
-# DLLs (except the ones you need)
+# DLLs 
 *.dll
 !glfw3.dll
+!nvml.dll
 
 # vcpkg
 vcpkg_installed/
