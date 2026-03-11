@@ -48,6 +48,22 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // styling
+    ImGui::StyleColorsLight();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 2.0f;
+    style.FrameRounding = 2.0f;
+    style.ScrollbarRounding = 2.0f;
+    style.GrabRounding = 2.0f;
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 0.0f;
+    style.ItemSpacing = ImVec2(8, 6);
+    style.FramePadding = ImVec2(6, 4);
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_TableRowBg] = ImVec4(1, 1, 1, 1);
+    colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.96f, 0.96f, 0.96f, 1);
+    io.Fonts->AddFontFromFileTTF("fonts/font.ttf", 16.0f);
+
     SystemMonitor monitor;
     StoragePage storage;
     monitor.InitPDH();
