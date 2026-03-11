@@ -105,7 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\external\imgui;$(ProjectDir)..\external\imgui\backends;$(ProjectDir)..\external\implot;$(ProjectDir)..\external\vcpkg\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\external\imgui;$(ProjectDir)..\external\imgui\backends;$(ProjectDir)..\external\implot;$(ProjectDir)..\external\vcpkg\include;$(CUDA_PATH)\include;$(ProjectDir)..\nvml;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,7 +123,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\external\imgui;$(ProjectDir)..\external\imgui\backends;$(ProjectDir)..\external\implot;$(ProjectDir)..\external\vcpkg\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\external\imgui;$(ProjectDir)..\external\imgui\backends;$(ProjectDir)..\external\implot;$(ProjectDir)..\external\vcpkg\include;$(CUDA_PATH)\include;$(ProjectDir)..\nvml;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
