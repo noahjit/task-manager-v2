@@ -113,6 +113,10 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\external\lib;</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)glfw3dll.lib;opengl32.lib;pdh.lib;nvml.lib;gdi32.lib;shell32.lib;user32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)nvml\nvml.dll" "$(OutDir)nvml.dll"
+copy "$(SolutionDir)glfw3.dll" "$(OutDir)glfw3.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -133,6 +137,10 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\external\lib;</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies)glfw3dll.lib;opengl32.lib;pdh.lib;nvml.lib;gdi32.lib;shell32.lib;user32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(SolutionDir)nvml\nvml.dll" "$(OutDir)nvml.dll"
+copy "$(SolutionDir)glfw3.dll" "$(OutDir)glfw3.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\external\imgui\backends\imgui_impl_glfw.cpp" />
