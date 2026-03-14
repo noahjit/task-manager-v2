@@ -201,6 +201,7 @@ unsigned int SystemMonitor::GetGPUTemp() {
 std::string SystemMonitor::GetGPUModelName() {
 	char name[NVML_DEVICE_NAME_BUFFER_SIZE];
 	nvmlReturn_t result = nvmlDeviceGetName(nvmlDevice, name, NVML_DEVICE_NAME_BUFFER_SIZE);
+	if (result != NVML_SUCCESS) return "NONE";
 	return std::string(name);
 }
 

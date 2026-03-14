@@ -198,27 +198,34 @@ int main() {
             if (ImGui::BeginTabItem("Performance")) {
                 if (ImGui::BeginTabBar("PerformanceTabs")) {
                     if (ImGui::BeginTabItem("GPU")) {
-                        ImGui::Text("%s", gpuName.c_str());
-                        ImGui::Text("Utilization: %.1f%%", lastGpu);
+                        if (gpuName == "NONE") {
+                            ImGui::Text("No GPU Detected.");
+                            ImGui::EndTabItem();
+                        } 
+                        else {
+                            ImGui::Text("%s", gpuName.c_str());
+                            ImGui::Text("Utilization: %.1f%%", lastGpu);
 
-                        if (ImPlot::BeginPlot("GPU Usage", ImVec2(-1, 0), ImPlotFlags_NoInputs | ImPlotFlags_NoMouseText)) {
-                            ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 100);
+                            if (ImPlot::BeginPlot("GPU Usage", ImVec2(-1, 0), ImPlotFlags_NoInputs | ImPlotFlags_NoMouseText)) {
+                                ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 100);
 
-                            ImPlot::SetupAxes("", "Utilization %");
-                            ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoTickLabels);
+                                ImPlot::SetupAxes("", "Utilization %");
+                                ImPlot::SetupAxis(ImAxis_X1, nullptr, ImPlotAxisFlags_NoTickLabels);
 
-                            int count = GpuUtilReadings.size();
-                            double xMax = count > 0 ? count - 1 : 0;
-                            double xMin = count > 60 ? count - 60 : 0;
-                            ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
+                                int count = GpuUtilReadings.size();
+                                double xMax = count > 0 ? count - 1 : 0;
+                                double xMin = count > 60 ? count - 60 : 0;
+                                ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
 
-                            ImPlot::PlotShaded("", GpuUtilReadings.data(), GpuUtilReadings.size());
-                            ImPlot::EndPlot();
+                                ImPlot::PlotShaded("", GpuUtilReadings.data(), GpuUtilReadings.size());
+                                ImPlot::EndPlot();
+                            }
+
+                            ImGui::Text("VRAM Usage: %.2f GB / %.2f GB", monitor.GetUsedVRAM(), monitor.GetTotalVRAM());
+                            ImGui::Text(u8"GPU Temp: %u°C", monitor.GetGPUTemp());
+                            ImGui::EndTabItem();
                         }
-
-                        ImGui::Text("VRAM Usage: %.2f GB / %.2f GB", monitor.GetUsedVRAM(), monitor.GetTotalVRAM());
-                        ImGui::Text(u8"GPU Temp: %u°C", monitor.GetGPUTemp());
-                        ImGui::EndTabItem();
+                        
                     }
                     if (ImGui::BeginTabItem("CPU")) {
                         ImGui::Text("%s", cpuName.c_str());
